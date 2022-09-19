@@ -12,21 +12,20 @@ hand-written digits, from 0-9.
 # License: BSD 3 clause
 
 # Standard scientific Python imports
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import itertools
 
 # Import datasets, classifiers and performance metrics
 from sklearn import datasets, svm, metrics
 from sklearn.model_selection import train_test_split
+from skimage.transform import rescale, resize, downscale_local_mean
 
 # Model hyper-parameters
 gamma_ = [0.001, 0.005, 0.01, 0.02]
 C_ = [0.5, 1, 1.5, 2]
 
-# h_param_dict = [{'gamma': GAMMA, 'C': C} for GAMMA in gamma_ for C in C_]
-
 h_params = list(itertools.product(gamma_, C_))
-print(h_params)
+
 ###############################################################################
 # Digits dataset
 # --------------
@@ -43,12 +42,6 @@ print(h_params)
 
 digits = datasets.load_digits()
 
-_, axes = plt.subplots(nrows=1, ncols=4, figsize=(10, 3))
-for ax, image, label in zip(axes, digits.images, digits.target):
-    ax.set_axis_off()
-    ax.imshow(image, cmap=plt.cm.gray_r, interpolation="nearest")
-    ax.set_title("Training: %i" % label)
-
 ###############################################################################
 # Classification
 # --------------
@@ -63,64 +56,70 @@ for ax, image, label in zip(axes, digits.images, digits.target):
 # vector classifier on the train samples. The fitted classifier can
 # subsequently be used to predict the value of the digit for the samples
 # in the test subset.
-best_acc = 0.0
-curr_acc = 0.0
 
-for h_param in h_params:
-    # Create a classifier: a support vector classifier
-    # flatten the images
-    n_samples = len(digits.images)
-    data = digits.images.reshape((n_samples, -1))
-
-    clf = svm.SVC(gamma=h_param[0], C=h_param[1])
+n_samples = len(digits.images)
+IMAGE_SIZE = [(digits.images[0].shape[0], digits.images[0].shape[1]) , (digits.images[0].shape[0] // 2,
+                digits.images[0].shape[1] // 2), (6, 6), (16, 16)]
 
 
-    # Split data into 50% train and 50% test subsets
-    X_train, X_test, y_train, y_test = train_test_split(
-        data, digits.target, test_size=0.5, shuffle=False
-    )
+for image_size in IMAGE_SIZE:
+    print(f"Image Size in digit dataset: {digits.images[0].shape}")
+    data = resize(digits.images, (len(digits.images), image_size[0], image_size[1]), anti_aliasing=True)
+    print(f"Image Size after transformation: {data[0].shape}")
+    data = data.reshape((n_samples, -1))
 
-    # Learn the digits on the train subset
-    clf.fit(X_train, y_train)
+    accuracy_list_all_params = []
+    best_acc = -1.0
+    for h_param in h_params:
+        accuracy_list = []
+        # Create a classifier: a support vector classifier
+        # flatten the images
+        clf = svm.SVC(gamma=h_param[0], C=h_param[1])
 
-    # Predict the value of the digit on the test subset
-    predicted = clf.predict(X_test)
+        # Split data train and another set for dev and test
+        X_train, X_split, y_train, y_split = train_test_split(
+            data, digits.target, test_size=0.8, shuffle=False
+        )
 
-    curr_acc = metrics.accuracy_score(y_test, predicted)
+        X_dev, X_test, y_dev, y_test = train_test_split(
+            X_split, y_split, test_size=0.5, shuffle=False
+        )
 
+        # Learn the digits on the train subset
+        clf.fit(X_train, y_train)
 
-    ###############################################################################
-    # Below we visualize the first 4 test samples and show their predicted
-    # digit value in the title.
+        # Predict the value of the digit on the train subset
+        predicted = clf.predict(X_train)
+        train_acc = metrics.accuracy_score(y_train, predicted)
+        accuracy_list.append(train_acc)
 
-    # _, axes = plt.subplots(nrows=1, ncols=4, figsize=(10, 3))
-    # for ax, image, prediction in zip(axes, X_test, predicted):
-    #     ax.set_axis_off()
-    #     image = image.reshape(8, 8)
-    #     ax.imshow(image, cmap=plt.cm.gray_r, interpolation="nearest")
-    #     ax.set_title(f"Prediction: {prediction}")
+        # Predict the value of the digit on the dev subset
+        predicted = clf.predict(X_dev)
+        dev_acc = metrics.accuracy_score(y_dev, predicted)
+        accuracy_list.append(dev_acc)
 
-    ###############################################################################
-    # :func:`~sklearn.metrics.classification_report` builds a text report showing
-    # the main classification metrics.
+        # Predict the value of the digit on the test subset
+        predicted = clf.predict(X_test)
+        test_acc = metrics.accuracy_score(y_test, predicted)
+        accuracy_list.append(test_acc)
 
-    if curr_acc > best_acc:
-        best_acc = curr_acc
-        best_clf = clf
-        report = metrics.classification_report(y_test, predicted)
-        best_h_param = h_param
-        print(
-            f"Classification report for classifier {clf}: with parameter gamme = {best_h_param}\n"
-            f"{curr_acc}\n")
+        ###############################################################################
+        # :func:`~sklearn.metrics.classification_report` builds a text report showing
+        # the main classification metrics.
 
-print(f"Classification report for classifier {best_clf}: with parameter = {best_h_param}\n "
-      f"{report}\n")
-###############################################################################
-# We can also plot a :ref:`confusion matrix <confusion_matrix>` of the
-# true digit values and the predicted digit values.
+        if test_acc > best_acc:
+            best_acc = test_acc
+            best_clf = clf
+            report = metrics.classification_report(y_test, predicted)
+            best_h_param = h_param
+            # print(
+            #     f"Classification accuracy for classifier {clf}: {test_acc}\n")
 
-# disp = metrics.ConfusionMatrixDisplay.from_predictions(y_test, predicted)
-# disp.figure_.suptitle("Confusion Matrix")
-# print(f"Confusion matrix:\n{disp.confusion_matrix}")
-#
-# plt.show()
+        accuracy_list_all_params.append(accuracy_list)
+
+    print("h_param:                train  dev  test")
+    for (h_param, i) in zip(h_params, accuracy_list_all_params):
+        print("Gamma= {0:<5} C={1:<5}  : {2:.2f}  {3:.2f}  {4:.2f}".format(h_param[0], h_param[1], i[0], i[1], i[2]))
+
+    print(f"\nClassification report with Image size {image_size} for best classifier {best_clf}: "
+          f"{best_acc}\n")
