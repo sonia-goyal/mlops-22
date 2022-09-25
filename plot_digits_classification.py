@@ -14,6 +14,7 @@ hand-written digits, from 0-9.
 # Standard scientific Python imports
 # import matplotlib.pyplot as plt
 import itertools
+import statistics
 
 # Import datasets, classifiers and performance metrics
 from sklearn import datasets, svm, metrics
@@ -21,8 +22,8 @@ from sklearn.model_selection import train_test_split
 from skimage.transform import rescale, resize, downscale_local_mean
 
 # Model hyper-parameters
-gamma_ = [0.001, 0.005, 0.01, 0.02]
-C_ = [0.5, 1, 1.5, 2]
+gamma_ = [0.001, 0.005, 0.01, 0.02, 0.04]
+C_ = [0.1, 0.5, 1, 1.5, 2]
 
 h_params = list(itertools.product(gamma_, C_))
 
@@ -58,18 +59,25 @@ digits = datasets.load_digits()
 # in the test subset.
 
 n_samples = len(digits.images)
-IMAGE_SIZE = [(digits.images[0].shape[0], digits.images[0].shape[1]) , (digits.images[0].shape[0] // 2,
-                digits.images[0].shape[1] // 2), (6, 6), (16, 16)]
+IMAGE_SIZE = [(digits.images[0].shape[0], digits.images[0].shape[1])]
+#, (digits.images[0].shape[0] // 2,
+#                digits.images[0].shape[1] // 2), (6, 6), (16, 16)]
 
-
+test_frac = 0.5
+test_dev = 0.5
 for image_size in IMAGE_SIZE:
     print(f"Image Size in digit dataset: {digits.images[0].shape}")
+    print(f"Train_frac: {test_frac}, test_dev: {test_dev}")
     data = resize(digits.images, (len(digits.images), image_size[0], image_size[1]), anti_aliasing=True)
-    print(f"Image Size after transformation: {data[0].shape}")
+    # print(f"Image Size after transformation: {data[0].shape}")
     data = data.reshape((n_samples, -1))
 
     accuracy_list_all_params = []
+    dev_acc_list = []
+    train_acc_list = []
+    test_acc_list = []
     best_acc = -1.0
+
     for h_param in h_params:
         accuracy_list = []
         # Create a classifier: a support vector classifier
@@ -78,7 +86,7 @@ for image_size in IMAGE_SIZE:
 
         # Split data train and another set for dev and test
         X_train, X_split, y_train, y_split = train_test_split(
-            data, digits.target, test_size=0.8, shuffle=False
+            data, digits.target, test_size=0.5, shuffle=False
         )
 
         X_dev, X_test, y_dev, y_test = train_test_split(
@@ -92,16 +100,19 @@ for image_size in IMAGE_SIZE:
         predicted = clf.predict(X_train)
         train_acc = metrics.accuracy_score(y_train, predicted)
         accuracy_list.append(train_acc)
+        train_acc_list.append(train_acc)
 
         # Predict the value of the digit on the dev subset
         predicted = clf.predict(X_dev)
         dev_acc = metrics.accuracy_score(y_dev, predicted)
         accuracy_list.append(dev_acc)
+        dev_acc_list.append(dev_acc)
 
         # Predict the value of the digit on the test subset
         predicted = clf.predict(X_test)
         test_acc = metrics.accuracy_score(y_test, predicted)
         accuracy_list.append(test_acc)
+        test_acc_list.append(dev_acc)
 
         ###############################################################################
         # :func:`~sklearn.metrics.classification_report` builds a text report showing
@@ -112,14 +123,26 @@ for image_size in IMAGE_SIZE:
             best_clf = clf
             report = metrics.classification_report(y_test, predicted)
             best_h_param = h_param
-            # print(
-            #     f"Classification accuracy for classifier {clf}: {test_acc}\n")
 
         accuracy_list_all_params.append(accuracy_list)
 
+    # Tabular form of train dev and test accuracy
     print("h_param:                train  dev  test")
     for (h_param, i) in zip(h_params, accuracy_list_all_params):
         print("Gamma= {0:<5} C={1:<5}  : {2:.2f}  {3:.2f}  {4:.2f}".format(h_param[0], h_param[1], i[0], i[1], i[2]))
 
+    # Print Max, min, mean and median of accuracies
+    print("\n\n")
+    print(
+        f"Train: Max = {max(train_acc_list)}, Min = {min(train_acc_list)}, Median = {statistics.median(train_acc_list)}, "
+        f"Mean = {statistics.mean(train_acc_list)}")
+    print(
+        f"Dev: Max = {max(dev_acc_list)}, Min = {min(dev_acc_list)}, Median = {statistics.median(dev_acc_list)}, "
+        f"Mean = {statistics.mean(dev_acc_list)}")
+    print(
+        f"Test: Max = {max(test_acc_list)}, Min = {min(test_acc_list)}, Median = "
+        f"{statistics.median(test_acc_list)}, Mean = {statistics.mean(test_acc_list)}")
+
+    # Best model prediction
     print(f"\nClassification report with Image size {image_size} for best classifier {best_clf}: "
           f"{best_acc}\n")
