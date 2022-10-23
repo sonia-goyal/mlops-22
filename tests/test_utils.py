@@ -55,9 +55,6 @@ def test_tune_and_save():
     assert type(load(actual_model_path)) == type(clf)
 
 
-train_frac, dev_frac, test_frac = 0.8, 0.1, 0.1
-
-
 def countElement(sample_list, element):
     return sample_list.count(element)
 
