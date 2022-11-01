@@ -22,13 +22,6 @@ def predict(best_model, x_test, y_test, metric):
     return cur_metric
 
 
-# other types of preprocessing
-# - image : 8x8 : resize 16x16, 32x32, 4x4 : flatteing
-# - normalize data: mean normalization: [x - mean(X)]
-#                 - min-max normalization
-# - smoothing the image: blur on the image
-
-
 def data_viz(dataset):
     # PART: sanity check visualization of the data
     _, axes = plt.subplots(nrows=1, ncols=4, figsize=(10, 3))
