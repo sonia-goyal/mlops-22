@@ -10,3 +10,10 @@ Run SVM  Decision Tree
 mean:  0.98   0.86
 std:  0.01   0.03
 ```
+
+Add flask app
+Command:
+
+```
+export FLASK_APP=app; flask run
+```
