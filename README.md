@@ -17,3 +17,15 @@ Command:
 ```
 export FLASK_APP=app; flask run
 ```
+
+Docker image name for flask app
+
+```
+REPOSITORY                     TAG                                IMAGE ID       CREATED          SIZE
+exp                            flask_app                          6cbad1f72377   5 minutes ago    437MB
+<none>                         <none>                             61c1457c06d1   6 minutes ago    437MB
+```
+
+flask_app - This image is using separate requirements file which have the necessary packages only.
+Exposed port is 5050
+
