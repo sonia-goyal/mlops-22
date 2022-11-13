@@ -26,7 +26,8 @@ exp                            flask_app                          6cbad1f72377  
 <none>                         <none>                             61c1457c06d1   6 minutes ago    437MB
 ```
 
-Dockerfile Name: Dockerfile_flask
+```
+Dockerfile Name: Dockerfile_flask 
 Image name: flask_app - This image is using separate requirements file which have the necessary packages only.
 Exposed port: 5050
-
+```
