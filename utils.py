@@ -16,9 +16,13 @@ def preprocess_digits(dataset):
     return data, label
 
 
-def predict(best_model, x_test, y_test, metric):
-    predicted = best_model.predict(x_test)
-    cur_metric = metric(y_pred=predicted, y_true=y_test)
+def predict(best_model, x_test, y_test, metric, metric_type='accuracy_score'):
+    if metric_type == 'f1_macro':
+        predicted = best_model.predict(x_test)
+        cur_metric = metric(y_pred=predicted, y_true=y_test, average='macro')
+    else:
+        predicted = best_model.predict(x_test)
+        cur_metric = metric(y_pred=predicted, y_true=y_test)
     return cur_metric
 
 
@@ -46,13 +50,13 @@ def pred_image_viz(x_test, predictions):
 # dev to set hyperparameters of the model
 # test to evaluate the performance of the model
 
-def train_dev_test_split(data, label, train_frac, dev_frac):
+def train_dev_test_split(data, label, train_frac, dev_frac, randome_seed_val=42):
     dev_test_frac = 1 - train_frac
     x_train, x_dev_test, y_train, y_dev_test = train_test_split(
-        data, label, test_size=dev_test_frac, shuffle=True
+        data, label, test_size=dev_test_frac, random_state=randome_seed_val
     )
     x_test, x_dev, y_test, y_dev = train_test_split(
-        x_dev_test, y_dev_test, test_size=(dev_frac) / dev_test_frac, shuffle=True
+        x_dev_test, y_dev_test, test_size=dev_frac / dev_test_frac, random_state=randome_seed_val
     )
 
     return x_train, y_train, x_dev, y_dev, x_test, y_test

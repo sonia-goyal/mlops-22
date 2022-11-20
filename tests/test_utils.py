@@ -4,8 +4,8 @@ from joblib import load
 
 sys.path.append(".")
 
-from utils import get_all_h_param_comb, tune_and_save, h_param_tuning, train_dev_test_split
-from sklearn import svm, metrics
+from utils import get_all_h_param_comb, tune_and_save, h_param_tuning, train_dev_test_split, preprocess_digits
+from sklearn import svm, metrics, datasets
 
 
 # test case to check if all the combinations of the hyper parameters are indeed getting created
@@ -84,8 +84,8 @@ def test_model_bias():
     print("======= Hello World =======")
     sum_count = sum(store_count)
     for i in store_count:
-        per = i / sum_count * 100
-        assert per <= 80
+        per = i / sum_count
+        assert per <= 50
 
 
 def test_predict_all_classes():
@@ -105,3 +105,35 @@ def test_predict_all_classes():
 
     classes = set(pred)
     assert ground_truth_labels == classes  # classes.issubset(ground_truth_labels) == True
+
+
+def test_randomness_of_splits():
+    h_param_comb = helper_h_params()
+    x_train, y_train = helper_create_bin_data(n=100, d=7)
+
+    x_train, y_train, x_dev, y_dev, x_test, y_test = train_dev_test_split(
+        x_train, y_train, 0.8, .1, 42
+    )
+
+    x_train1, y_train1, x_dev1, y_dev1, x_test1, y_test1 = train_dev_test_split(
+        x_train, y_train, 0.8, .1, 42
+    )
+
+
+    assert np.array_equal(x_train, x_train1)
+
+
+def test_randomness_of_splits2():
+    h_param_comb = helper_h_params()
+    x_train, y_train = helper_create_bin_data(n=100, d=7)
+
+    x_train, y_train, x_dev, y_dev, x_test, y_test = train_dev_test_split(
+        x_train, y_train, 0.8, .1, 10
+    )
+
+    x_train1, y_train1, x_dev1, y_dev1, x_test1, y_test1 = train_dev_test_split(
+        x_train, y_train, 0.8, .1, 42
+    )
+
+
+    assert np.array_equal(x_train, x_train1)

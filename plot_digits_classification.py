@@ -4,6 +4,8 @@
 from sklearn import datasets, svm, metrics
 from sklearn import tree
 import numpy as np
+import argparse
+from joblib import dump, load
 
 from utils import (
     preprocess_digits,
@@ -14,6 +16,20 @@ from utils import (
     get_all_h_param_comb,
     predict
 )
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('--clf_name')           # positional argument
+parser.add_argument('--random_state')      # option that takes a value
+parser.add_argument('-v', '--verbose',
+                    action='store_true')  # on/off flag
+
+args = parser.parse_args()
+# print(args.filename, args.count, args.verbose)
+
+clf_name = args.clf_name
+random_seed_value = args.random_state
+print(f"Classifier name: {clf_name}, Random seed: {random_seed_value}")
 
 train_frac, dev_frac, test_frac = 0.8, 0.1, 0.1
 assert train_frac + dev_frac + test_frac == 1.0
@@ -32,26 +48,43 @@ data_viz(digits)
 data, label = preprocess_digits(digits)
 del digits
 
-models = [[tree.DecisionTreeClassifier(), 'decision_tree'], [svm.SVC(), 'svm']]
+if clf_name == 'svm':
+    models = [[svm.SVC(), 'svm']]
+elif clf_name == 'tree':
+    models = [[tree.DecisionTreeClassifier(), 'decision_tree']]
+else:
+    print("Give valid argument")
+    exit()
+# models = [[tree.DecisionTreeClassifier(), 'decision_tree'], [svm.SVC(), 'svm']]
 perf_test = {}
 metric = metrics.accuracy_score
+metric2 = metrics.f1_score
 for model in models:
-    ls = []
-    for i in range(5):
-        print(f"\nTraining for split: {i + 1}")
-        x_train, y_train, x_dev, y_dev, x_test, y_test = train_dev_test_split(data, label, train_frac, dev_frac)
-        clf = model[0]
-        if model[1] == 'svm':
-            best_model, best_metric, best_h_params = h_param_tuning(h_param_comb, clf, x_train, y_train, x_dev, y_dev,
-                                                                    metric)
-        else:
-            best_model, best_metric, best_h_params = h_param_tuning_dec(clf, x_train, y_train, x_dev, y_dev, metric)
-        ls.append(predict(best_model, x_test, y_test, metric))
-    perf_test[model[1]] = ls
+    x_train, y_train, x_dev, y_dev, x_test, y_test = train_dev_test_split(data, label, train_frac, dev_frac, int(random_seed_value))
+    clf = model[0]
+    if model[1] == 'svm':
+        best_model, best_metric, best_h_params = h_param_tuning(h_param_comb, clf, x_train, y_train, x_dev, y_dev,
+                                                                metric)
+    else:
+        best_model, best_metric, best_h_params = h_param_tuning_dec(clf, x_train, y_train, x_dev, y_dev, metric)
+
+    result = predict(best_model, x_test, y_test, metric)
+    print("test accuracy: ", str(result))
+
+    result2 = predict(best_model, x_test, y_test, metric2, 'f1_macro')
+    print("test macro-f1: ", str(result2))
+
+
+    file = open("results/" + str(clf_name) + "_" + str(random_seed_value) + ".txt", "w")
+    file.write("test accuracy: " + str(result) + "\n")
+    file.write("test macro-f1: " + str(result2))
+    file.close()
+
+    if model[1] == 'svm':
+        best_param_config = "_".join([h + "=" + str(best_h_params[h]) for h in best_h_params])
+    else:
+        best_param_config = "decision_tree_" + best_h_params
+    dump(best_model, "models/" + model[1]+"_" + best_param_config + ".joblib")
 
 print("\n")
-for i in range(5):
-    print(i + 1, round(perf_test['svm'][i], 2), round(perf_test['decision_tree'][i], 2))
-print("mean: ", round(np.mean(perf_test['svm']), 2), " ", round(np.mean(perf_test['decision_tree']), 2))
-print("std: ", round(np.std(perf_test['svm']), 2), " ", round(np.std(perf_test['decision_tree']), 2))
 
